@@ -295,6 +295,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -6009921392208378166, guid: 861f1ff869c3458419fcb2081e107012, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 79.19
+      objectReference: {fileID: 0}
+    - target: {fileID: -5943089204852086151, guid: 861f1ff869c3458419fcb2081e107012, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 87.25
+      objectReference: {fileID: 0}
+    - target: {fileID: -5751949428428801006, guid: 861f1ff869c3458419fcb2081e107012, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 90.9
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 861f1ff869c3458419fcb2081e107012, type: 3}
       propertyPath: m_Name
       value: Pascapas
