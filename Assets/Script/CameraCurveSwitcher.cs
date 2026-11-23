@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro; // Wajib untuk TextMeshPro Dropdown
 
 public class CameraCurveSwitcher : MonoBehaviour
 {
@@ -24,23 +25,110 @@ public class CameraCurveSwitcher : MonoBehaviour
     [Header("Daftar Angle & Jalur Curve")]
     public List<CameraAnglePath> daftarAngle = new List<CameraAnglePath>();
 
-    [Header("Pengaturan Waktu")]
-    [Tooltip("Jeda waktu sebelum pindah ke angle berikutnya (detik)")]
+    [Header("UI Navigasi")]
+    [Tooltip("Masukkan TMP_Dropdown dari Canvas di sini")]
+    public TMP_Dropdown locationDropdown;
+
+    [Header("Pengaturan Mode Otomatis")]
+    [Tooltip("Centang jika ingin kamera otomatis berkeliling sendiri")]
+    public bool autoSwitch = false;
+    [Tooltip("Jeda waktu sebelum pindah otomatis ke angle berikutnya (detik)")]
     public float intervalPindah = 5f;
     public bool loop = true;
 
     private int currentIndex = 0;
+    private Coroutine activeMoveCoroutine;
+    private Coroutine autoSwitchCoroutine;
 
     void Start()
     {
+        SetupDropdown();
+
         if (daftarAngle.Count > 0 && daftarAngle[0].targetPoint != null)
         {
             // Set posisi & rotasi awal kamera sesuai angle pertama
             transform.position = daftarAngle[0].targetPoint.position;
             transform.rotation = daftarAngle[0].targetPoint.rotation;
 
-            StartCoroutine(AutoSwitchRoutine());
+            if (autoSwitch)
+            {
+                autoSwitchCoroutine = StartCoroutine(AutoSwitchRoutine());
+            }
         }
+    }
+
+    // Mengisi opsi Dropdown otomatis dari daftarAngle
+    void SetupDropdown()
+    {
+        if (locationDropdown == null) return;
+
+        locationDropdown.ClearOptions();
+        List<string> options = new List<string>();
+
+        foreach (var angle in daftarAngle)
+        {
+            options.Add(angle.namaAngle);
+        }
+
+        locationDropdown.AddOptions(options);
+        locationDropdown.value = 0;
+        locationDropdown.RefreshShownValue();
+
+        // Daftarkan event saat user memilih item di dropdown
+        locationDropdown.onValueChanged.AddListener(PindahKeIndex);
+    }
+
+    // Fungsi utama untuk dipanggil oleh Dropdown atau Button (berdasarkan Index)
+    public void PindahKeIndex(int targetIndex)
+    {
+        if (targetIndex < 0 || targetIndex >= daftarAngle.Count) return;
+        if (targetIndex == currentIndex && activeMoveCoroutine == null) return;
+
+        // Hentikan mode auto-switch jika user mengambil alih kontrol lewat UI
+        if (autoSwitchCoroutine != null)
+        {
+            StopCoroutine(autoSwitchCoroutine);
+            autoSwitchCoroutine = null;
+        }
+
+        // Hentikan pergerakan curve yang sedang berjalan agar tidak tabrakan
+        if (activeMoveCoroutine != null)
+        {
+            StopCoroutine(activeMoveCoroutine);
+        }
+
+        currentIndex = targetIndex;
+
+        // Sinkronkan tampilan teks Dropdown jika dipicu lewat tombol Next/Prev
+        if (locationDropdown != null && locationDropdown.value != targetIndex)
+        {
+            locationDropdown.SetValueWithoutNotify(targetIndex);
+        }
+
+        activeMoveCoroutine = StartCoroutine(MoveAlongCurve(daftarAngle[targetIndex]));
+    }
+
+    // Fungsi opsional jika ingin memakai tombol UI "Next" & "Previous"
+    public void PindahBerikutnya()
+    {
+        int nextIndex = currentIndex + 1;
+        if (nextIndex >= daftarAngle.Count)
+        {
+            if (loop) nextIndex = 0;
+            else return;
+        }
+        PindahKeIndex(nextIndex);
+    }
+
+    public void PindahSebelumnya()
+    {
+        int prevIndex = currentIndex - 1;
+        if (prevIndex < 0)
+        {
+            if (loop) prevIndex = daftarAngle.Count - 1;
+            else return;
+        }
+        PindahKeIndex(prevIndex);
     }
 
     IEnumerator AutoSwitchRoutine()
@@ -56,8 +144,14 @@ public class CameraCurveSwitcher : MonoBehaviour
                 else yield break;
             }
 
-            yield return StartCoroutine(MoveAlongCurve(daftarAngle[nextIndex]));
             currentIndex = nextIndex;
+            if (locationDropdown != null)
+            {
+                locationDropdown.SetValueWithoutNotify(nextIndex);
+            }
+
+            activeMoveCoroutine = StartCoroutine(MoveAlongCurve(daftarAngle[nextIndex]));
+            yield return activeMoveCoroutine;
         }
     }
 
@@ -71,7 +165,6 @@ public class CameraCurveSwitcher : MonoBehaviour
         Vector3 p3 = path.targetPoint.position;
         Quaternion endRot = path.targetPoint.rotation;
 
-        // Jika Control Point tidak diisi, otomatis buat titik tengah lurus
         Vector3 p1 = path.controlPoint1 != null ? path.controlPoint1.position : Vector3.Lerp(p0, p3, 0.33f);
         Vector3 p2 = path.controlPoint2 != null ? path.controlPoint2.position : Vector3.Lerp(p0, p3, 0.66f);
 
@@ -80,11 +173,8 @@ public class CameraCurveSwitcher : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / path.durasiGerak);
-
-            // SmoothStep agar akselerasi awal & pengereman akhir halus (ease-in-out)
             float smoothT = Mathf.SmoothStep(0f, 1f, t);
 
-            // Hitung posisi & rotasi di jalur Bezier Curve
             transform.position = CalculateCubicBezier(smoothT, p0, p1, p2, p3);
             transform.rotation = Quaternion.Slerp(startRot, endRot, smoothT);
 
@@ -93,9 +183,9 @@ public class CameraCurveSwitcher : MonoBehaviour
 
         transform.position = p3;
         transform.rotation = endRot;
+        activeMoveCoroutine = null;
     }
 
-    // Rumus Cubic Bezier Curve
     Vector3 CalculateCubicBezier(float t, Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3)
     {
         float u = 1f - t;
@@ -111,7 +201,6 @@ public class CameraCurveSwitcher : MonoBehaviour
         return point;
     }
 
-    // Visualisasi garis curve di Scene View agar mudah diatur
     void OnDrawGizmos()
     {
         if (daftarAngle == null || daftarAngle.Count < 2) return;
@@ -141,7 +230,6 @@ public class CameraCurveSwitcher : MonoBehaviour
                 prevPoint = currentPoint;
             }
 
-            // Garis bantu kuning ke Control Points
             Gizmos.color = Color.yellow;
             Gizmos.DrawLine(p0, p1);
             Gizmos.DrawLine(p3, p2);
