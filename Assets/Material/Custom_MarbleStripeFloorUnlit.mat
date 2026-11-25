@@ -27,9 +27,9 @@ Material:
     m_Floats:
     - _GlossStrength: 0.45
     - _GroutWidth: 0.006
-    - _SpecPower: 64
-    - _StripeWidth: 0.6
-    - _SwapAxis: 0
+    - _SpecPower: 100
+    - _StripeWidth: 2.61
+    - _SwapAxis: 1
     - _TileLength: 1.2
     - _VeinScale: 15
     m_Colors:

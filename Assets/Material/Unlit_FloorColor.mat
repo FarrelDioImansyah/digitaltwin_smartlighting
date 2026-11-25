@@ -29,11 +29,11 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Chalkiness: 0
+    - _Chalkiness: 0.3
     - _GrainAmount: 0.015
-    - _GridScale: 0.3
+    - _GridScale: 0.15
     - _GroutWidth: 0.001
-    - _MarbleScale: 4
+    - _MarbleScale: 3.1
     - _MarbleStrength: 0.2
     - _RoughnessGrain: 0.12
     m_Colors:
